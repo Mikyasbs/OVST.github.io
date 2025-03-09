@@ -1,0 +1,90 @@
+/* Global Styles */
+body {
+  background: #222;
+  color: #ddd;
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+header {
+  background: #333;
+  padding: 20px;
+  text-align: center;
+}
+header h1 {
+  margin: 0;
+}
+nav {
+  background: #444;
+  padding: 10px;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+nav a {
+  color: #ddd;
+  text-decoration: none;
+  padding: 5px 10px;
+}
+nav a:hover {
+  background: #555;
+  border-radius: 4px;
+}
+.container {
+  padding: 20px;
+}
+.module {
+  margin-bottom: 40px;
+  background: #333;
+  padding: 20px;
+  border-radius: 5px;
+}
+.module h2 {
+  margin-top: 0;
+}
+label {
+  display: inline-block;
+  width: 220px;
+  margin-bottom: 5px;
+}
+input, select {
+  margin-bottom: 5px;
+  padding: 5px;
+  width: 120px;
+}
+button {
+  margin-top: 10px;
+  padding: 10px 20px;
+  background: #555;
+  color: #fff;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+}
+button:hover {
+  background: #666;
+}
+.output {
+  margin-top: 20px;
+  padding: 10px;
+  background: #444;
+  border-radius: 5px;
+}
+.tab {
+  display: none;
+}
+.tab.active {
+  display: block;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+table, th, td {
+  border: 1px solid #555;
+}
+th, td {
+  padding: 8px;
+  text-align: left;
+}

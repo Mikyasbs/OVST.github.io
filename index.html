@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Option Valuation, Simulation & Trading Calendar</title>
+  <!-- Load Chart.js for our simulation charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Option Valuation, Simulation & Trading Calendar</h1>
+  </header>
+  <nav>
+    <a href="#" onclick="showTab('home')">Home</a>
+    <a href="#" onclick="showTab('valuation')">Option Valuation</a>
+    <a href="#" onclick="showTab('simulation')">Simulation Lab</a>
+    <a href="#" onclick="showTab('calendar')">Trading Calendar</a>
+  </nav>
+  
+  <div class="container">
+    <!-- Home Page -->
+    <div id="home" class="tab active module">
+      <h2>Welcome</h2>
+      <p>
+        This website integrates an Option Valuation Module, a Simulation Lab for experimenting with Black–Scholes based strategies (with TP/SL, secondary TP, extraction, and initial capital inputs), and a Trading Calendar to track your trades.
+      </p>
+      <p>
+        Use the navigation above to explore each module.
+      </p>
+    </div>
+    
+    <!-- Option Valuation Module -->
+    <div id="valuation" class="tab module">
+      <h2>Option Valuation Module</h2>
+      <p>
+        Enter the standard Black–Scholes inputs along with additional market factors. The system will compute the theoretical price, an adjustment factor (with market sentiment playing the dominant role), a composite valuation, a grade with recommendations, and the trading edge.
+      </p>
+      
+      <h3>Black–Scholes Inputs</h3>
+      <label for="optionType">Option Type:</label>
+      <select id="optionType">
+        <option value="call">Call</option>
+        <option value="put">Put</option>
+      </select><br>
+      <label for="paramS">Stock Price (S):</label>
+      <input type="number" id="paramS" value="100" step="0.1"><br>
+      <label for="paramK">Strike Price (K):</label>
+      <input type="number" id="paramK" value="100" step="0.1"><br>
+      <label for="paramSigma">Volatility (σ):</label>
+      <input type="number" id="paramSigma" value="0.3" step="0.01"><br>
+      <label for="paramR">Risk-free Rate (r):</label>
+      <input type="number" id="paramR" value="0.05" step="0.005"><br>
+      <label for="paramT">Time to Maturity (days):</label>
+      <input type="number" id="paramT" value="252" step="1"><br>
+      
+      <h3>Additional Market Factors</h3>
+      <label for="marketRegime">Market Regime:</label>
+      <select id="marketRegime">
+        <option value="Bull">Bull</option>
+        <option value="Bear">Bear</option>
+        <option value="Consolidating">Consolidating</option>
+      </select><br>
+      <label for="paramTheta">Absolute Theta (θ):</label>
+      <input type="number" id="paramTheta" value="0.1" step="0.01"><br>
+      <label for="paramDelta">Delta (Δ):</label>
+      <input type="number" id="paramDelta" value="0.6" step="0.01"><br>
+      <label for="paramATR">ATR:</label>
+      <input type="number" id="paramATR" value="2" step="0.1"><br>
+      <label for="paramOI">Open Interest (OI):</label>
+      <input type="number" id="paramOI" value="1000" step="1"><br>
+      <label for="marketOptionPrice">Option Market Price (P_market):</label>
+      <input type="number" id="marketOptionPrice" value="5" step="0.1"><br>
+      
+      <button onclick="computeValuation()">Compute Valuation</button>
+      
+      <div class="output" id="valuationOutput"></div>
+      
+      <hr>
+      <p>
+        <strong>Adjustment Formula:</strong><br>
+        Q = (P × θ × e^(IV/100)) / [Δ × ATR × (P/S) × (OI+1) × ln(T_days+1)] × (regime factor)<br>
+        where IV = σ × 100, T_days is Time to Maturity in days.<br>
+        The regime factor is option‑type dependent:<br>
+        <em>For calls: Bear = 0.5, Consolidating = 0.7, Bull = 1.0; For puts: Bull = 0.5, Consolidating = 0.7, Bear = 1.0</em>
+      </p>
+    </div>
+    
+    <!-- Simulation Lab Module -->
+    <div id="simulation" class="tab module">
+      <h2>Simulation Lab</h2>
+      <p>
+        Experiment with different option parameters and strategies. The simulations below use the Black–Scholes model with your chosen inputs.
+      </p>
+      
+      <!-- Common Simulation Inputs -->
+      <h3>Simulation Inputs</h3>
+      <label for="simOptionType">Option Type:</label>
+      <select id="simOptionType">
+        <option value="call">Call</option>
+        <option value="put">Put</option>
+      </select><br>
+      <label for="simS">Stock Price (S):</label>
+      <input type="number" id="simS" value="100" step="0.1"><br>
+      <label for="simK">Strike Price (K):</label>
+      <input type="number" id="simK" value="100" step="0.1"><br>
+      <label for="simSigma">Volatility (σ):</label>
+      <input type="number" id="simSigma" value="0.3" step="0.01"><br>
+      <label for="simR">Risk-free Rate (r):</label>
+      <input type="number" id="simR" value="0.05" step="0.005"><br>
+      <label for="simT">Time to Maturity (years):</label>
+      <input type="number" id="simT" value="1" step="0.1"><br>
+      <label for="simMu">Drift (μ):</label>
+      <input type="number" id="simMu" value="0.05" step="0.01"><br>
+      <label for="simDt">Time Step (dt):</label>
+      <input type="number" id="simDt" value="0.00397" step="0.0001"><br>
+      <label for="simSteps">Number of Steps:</label>
+      <input type="number" id="simSteps" value="252" step="1"><br>
+      <label for="simNumSim">Simulations/Trades:</label>
+      <input type="number" id="simNumSim" value="500" step="10"><br>
+      
+      <hr>
+      <!-- Strategy Equity Parameters -->
+      <h3>Strategy Equity Parameters</h3>
+      <label for="tpPercentSim">Primary TP (% above Strike):</label>
+      <input type="number" id="tpPercentSim" value="10" step="1"><br>
+      <label for="slPercentSim">Stop-Loss (% below Strike):</label>
+      <input type="number" id="slPercentSim" value="20" step="1"><br>
+      <label for="secTPPercentSim">Secondary TP (% extra over TP):</label>
+      <input type="number" id="secTPPercentSim" value="15" step="1"><br>
+      <label for="extractionPercentSim">Extraction % on TP:</label>
+      <input type="number" id="extractionPercentSim" value="50" step="1"><br>
+      <label for="initialEquitySim">Initial Capital ($):</label>
+      <input type="number" id="initialEquitySim" value="1000" step="1"><br>
+      
+      <hr>
+      <!-- Price Path Simulation -->
+      <button onclick="simulatePricePath()">Simulate Price Path</button>
+      <canvas id="pricePathChart" width="600" height="300"></canvas>
+      <div class="output" id="pricePathInfo"></div>
+      
+      <hr>
+      <!-- Equity Curve Simulation -->
+      <button onclick="simulateEquityCurve()">Simulate Equity Curve</button>
+      <canvas id="equityCurveChart" width="600" height="300"></canvas>
+      
+      <hr>
+      <!-- Strategy Equity Simulation (TP/SL, Secondary TP, Extraction, Initial Equity) -->
+      <button onclick="simulateStrategyEquity()">Simulate Strategy Equity</button>
+      <canvas id="strategyEquityChart" width="600" height="300"></canvas>
+      <div class="output" id="strategyMetrics"></div>
+      
+      <hr>
+      <!-- Trading Edge Simulation -->
+      <button onclick="simulateTradeEdge()">Simulate Trading Edge</button>
+      <div class="output" id="tradeEdgeInfoSim"></div>
+    </div>
+    
+    <!-- Trading Calendar Module -->
+    <div id="calendar" class="tab module">
+      <h2>Trading Calendar</h2>
+      <p>
+        Track your trades for up to 5 trading days. Enter details for each trade below.
+      </p>
+      <form id="tradeForm" onsubmit="addTrade(event)">
+        <label for="tradeDate">Date:</label>
+        <input type="date" id="tradeDate" required><br>
+        <label for="tradeOptionType">Option Type:</label>
+        <select id="tradeOptionType">
+          <option value="call">Call</option>
+          <option value="put">Put</option>
+        </select><br>
+        <label for="tradeS">Stock Price (S):</label>
+        <input type="number" id="tradeS" value="100" step="0.1" required><br>
+        <label for="tradeK">Strike Price (K):</label>
+        <input type="number" id="tradeK" value="100" step="0.1" required><br>
+        <label for="tradeEntry">Entry Price:</label>
+        <input type="number" id="tradeEntry" value="5" step="0.1" required><br>
+        <label for="tradeExit">Exit Price:</label>
+        <input type="number" id="tradeExit" value="7" step="0.1" required><br>
+        <label for="tradeProfit">Profit ($):</label>
+        <input type="number" id="tradeProfit" value="200" step="0.1" required><br>
+        <label for="tradeComments">Comments:</label>
+        <input type="text" id="tradeComments" placeholder="Notes..."><br>
+        <button type="submit">Add Trade</button>
+      </form>
+      <h3>Trade Log</h3>
+      <table id="tradeTable">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Option</th>
+            <th>S</th>
+            <th>K</th>
+            <th>Entry</th>
+            <th>Exit</th>
+            <th>Profit</th>
+            <th>Comments</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Trade rows will appear here -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+  
+  <script src="main.js"></script>
+</body>
+</html>
