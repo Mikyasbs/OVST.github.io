@@ -1,0 +1,1466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <!-- Mobile viewport for responsiveness -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Option Valuation, Simulation & Trading Calendar</title>
+  <!-- Load Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Load Three.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    /* CSS Variables for Theme Modes (default: Theme 1 and Theme 2) */
+    :root {
+      --primary-color: #FBA002;
+      --secondary-color: #313B2F;
+      --bg-color: var(--primary-color);
+      --text-color: var(--secondary-color);
+      --glass-bg: rgba(49, 59, 47, 0.8);
+    }
+    /* Global Styles */
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Roboto', sans-serif;
+      background: var(--bg-color);
+      color: var(--text-color);
+      transition: background 0.5s ease, color 0.5s ease;
+    }
+    /* Override text color for glass/dashboard modules to always be white */
+    .module {
+      color: white;
+    }
+    /* 3D Background containers */
+    #threeBackground {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+    }
+    /* New inverted 3D background on top of the screen */
+    #threeBackgroundTop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 200px; /* adjust height as needed */
+      z-index: 999;
+      pointer-events: none;
+    }
+    /* Hamburger Menu */
+    .hamburger {
+      position: fixed;
+      top: 15px;
+      left: 15px;
+      width: 30px;
+      height: 25px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      cursor: pointer;
+      z-index: 1100;
+    }
+    .hamburger span {
+      display: block;
+      height: 4px;
+      background: var(--secondary-color);
+      border-radius: 2px;
+      transition: all 0.3s ease;
+    }
+    /* Side Navigation Menu */
+    .side-nav {
+      position: fixed;
+      top: 0;
+      left: -250px;
+      width: 250px;
+      height: 100%;
+      background: var(--primary-color);
+      color: var(--secondary-color);
+      transition: left 0.3s ease;
+      z-index: 1050;
+      padding-top: 60px;
+    }
+    .side-nav.open {
+      left: 0;
+    }
+    .side-nav ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .side-nav ul li {
+      padding: 15px;
+      border-bottom: 1px solid var(--secondary-color);
+    }
+    .side-nav ul li a {
+      color: var(--secondary-color);
+      text-decoration: none;
+      display: block;
+      transition: background 0.3s ease;
+    }
+    .side-nav ul li a:hover {
+      background: var(--secondary-color);
+      color: var(--primary-color);
+    }
+    .theme-switcher {
+      padding: 15px;
+      text-align: center;
+    }
+    .theme-switcher h3 {
+      margin-top: 0;
+      font-size: 1.1em;
+    }
+    .theme-switcher button {
+      margin: 5px;
+      padding: 8px 12px;
+      background: var(--secondary-color);
+      color: var(--primary-color);
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    .theme-switcher button:hover {
+      background: var(--primary-color);
+      color: var(--secondary-color);
+    }
+    /* Main Container */
+    .container {
+      padding: 60px 20px 20px 20px;
+      position: relative;
+      z-index: 100;
+    }
+    /* Module Styles (Glass Dashboard) */
+    .module {
+      margin-bottom: 40px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(5px);
+      border: 1px solid var(--secondary-color);
+      padding: 20px;
+      border-radius: 5px;
+    }
+    .module:hover {
+      /* Removed hover transform to avoid blurring */
+    }
+    .module h2, .module h3 {
+      margin-top: 0;
+    }
+    /* Form Elements */
+    label {
+      display: inline-block;
+      width: 220px;
+      margin-bottom: 5px;
+    }
+    input, select {
+      margin-bottom: 5px;
+      padding: 5px;
+      width: 120px;
+      border: none;
+      border-radius: 3px;
+    }
+    /* Buttons */
+    button {
+      margin-top: 10px;
+      padding: 10px 20px;
+      background: var(--secondary-color);
+      color: var(--primary-color);
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: background 0.3s ease, transform 0.2s ease;
+    }
+    button:hover {
+      background: var(--primary-color);
+      transform: translateY(-2px);
+    }
+    /* Output Box */
+    .result-box {
+      margin-top: 20px;
+      padding: 10px;
+      background: var(--secondary-color);
+      color: var(--primary-color);
+      border-radius: 5px;
+    }
+    /* Toggle Detailed Output */
+    #detailedOutput {
+      display: none;
+      margin-top: 10px;
+      padding: 10px;
+      background: rgba(49, 59, 47, 0.7);
+      border-radius: 5px;
+    }
+    /* Tabs */
+    .tab {
+      display: none;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+    .tab.active {
+      display: block;
+      opacity: 1;
+    }
+    /* Table Styles */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    table, th, td {
+      border: 1px solid var(--secondary-color);
+    }
+    th, td {
+      padding: 8px;
+      text-align: left;
+    }
+    /* Responsive Styles */
+    @media (max-width: 768px) {
+      label {
+        width: 100%;
+      }
+      input, select {
+        width: 100%;
+      }
+    }
+    
+    /* ================= Simulation Lab Specific Styles ================= */
+    /* Dual-Panel Layout */
+    .sim-container {
+      display: flex;
+      gap: 20px;
+      transition: all 0.5s ease;
+      flex-wrap: wrap;
+    }
+    /* Left Input Panel */
+    .sim-input-panel {
+      flex: 1;
+      padding: 15px;
+      background: var(--glass-bg);
+      border: 1px solid var(--secondary-color);
+      border-radius: 5px;
+      min-width: 280px;
+    }
+    /* Right Output Panel */
+    .sim-output-panel {
+      flex: 1;
+      padding: 15px;
+      background: var(--glass-bg);
+      border: 1px solid var(--secondary-color);
+      border-radius: 5px;
+      position: relative;
+      transition: opacity 0.5s ease;
+      min-width: 280px;
+    }
+    /* Chart Selector */
+    .chart-selector {
+      margin-bottom: 10px;
+    }
+    /* Expandable Strategy Inputs */
+    .strategy-inputs h3 {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+    }
+    .strategy-section {
+      overflow: hidden;
+      transition: max-height 0.5s ease, opacity 0.5s ease;
+    }
+    /* Optional 3D Background for Simulation Lab */
+    .sim-3d-bg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: -1;
+      opacity: 0.3;
+    }
+    
+    /* Advanced Pricing Panel */
+    .advanced-pricing {
+      margin-top: 20px;
+      background: var(--glass-bg);
+      border: 1px solid var(--secondary-color);
+      border-radius: 5px;
+      padding: 15px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <!-- Inverted 3D Animated Background on Top -->
+  <div id="threeBackgroundTop"></div>
+  
+  <!-- 3D Animated Background Container (Full Page, behind content) -->
+  <div id="threeBackground"></div>
+  
+  <!-- Hamburger Menu Icon -->
+  <div id="hamburger" class="hamburger" onclick="toggleNav()">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+  
+  <!-- Side Navigation Menu -->
+  <nav id="sideNav" class="side-nav">
+    <ul>
+      <li><a href="#" onclick="showTab('home'); toggleNav()">Home</a></li>
+      <li><a href="#" onclick="showTab('valuation'); toggleNav()">Option Valuation</a></li>
+      <li><a href="#" onclick="showTab('simulation'); toggleNav()">Simulation Lab</a></li>
+      <li><a href="#" onclick="showTab('calendar'); toggleNav()">Trading Calendar</a></li>
+    </ul>
+    <div class="theme-switcher">
+      <h3>Theme Mode</h3>
+      <button onclick="setTheme(1)">Theme 1</button>
+      <button onclick="setTheme(2)">Theme 2</button>
+    </div>
+  </nav>
+  
+  <!-- Main Content Container -->
+  <div class="container">
+    <!-- Home Module -->
+    <div id="home" class="tab active module">
+      <h2>Welcome</h2>
+      <p>
+        This website integrates an Option Valuation Module, a Simulation Lab for experimenting with Black–Scholes based strategies, and a Trading Calendar to track your trades.
+      </p>
+      <p>
+        Use the side menu to navigate and change the theme.
+      </p>
+    </div>
+    
+    <!-- Option Valuation Module -->
+    <div id="valuation" class="tab module">
+      <h2>Option Valuation Module</h2>
+      <p>
+        Enter the standard Black–Scholes inputs along with additional market factors. The system computes key metrics and provides a simplified view with the option to see more details.
+      </p>
+      
+      <h3>Black–Scholes Inputs</h3>
+      <label for="optionType">Option Type:</label>
+      <select id="optionType">
+        <option value="call">Call</option>
+        <option value="put">Put</option>
+      </select><br>
+      <label for="paramS">Stock Price (S):</label>
+      <input type="number" id="paramS" value="100" step="0.1"><br>
+      <label for="paramK">Strike Price (K):</label>
+      <input type="number" id="paramK" value="100" step="0.1"><br>
+      <label for="paramSigma">Volatility (σ):</label>
+      <input type="number" id="paramSigma" value="0.3" step="0.01"><br>
+      <label for="paramR">Risk-free Rate (r):</label>
+      <input type="number" id="paramR" value="0.05" step="0.005"><br>
+      <label for="paramT">Time to Maturity (days):</label>
+      <input type="number" id="paramT" value="252" step="1"><br>
+      
+      <h3>Additional Market Factors</h3>
+      <label for="marketRegime">Market Regime:</label>
+      <select id="marketRegime">
+        <option value="Bull">Bull</option>
+        <option value="Bear">Bear</option>
+        <option value="Consolidating">Consolidating</option>
+      </select><br>
+      <label for="paramTheta">Absolute Theta (θ):</label>
+      <input type="number" id="paramTheta" value="0.1" step="0.01"><br>
+      <label for="paramDelta">Delta (Δ):</label>
+      <input type="number" id="paramDelta" value="0.6" step="0.01"><br>
+      <label for="paramATR">ATR:</label>
+      <input type="number" id="paramATR" value="2" step="0.1"><br>
+      <label for="paramOI">Open Interest (OI):</label>
+      <input type="number" id="paramOI" value="1000" step="1"><br>
+      <label for="marketOptionPrice">Option Market Price (P_market):</label>
+      <input type="number" id="marketOptionPrice" value="5" step="0.1"><br>
+      
+      <button onclick="computeValuation()">Compute Valuation</button>
+      <button onclick="saveValuationToCalendar()">Save Trade</button>
+      <!-- Button to toggle Advanced Pricing Panel (remains from previous enhancements) -->
+      <button onclick="toggleAdvancedPricing()">Show Advanced Pricing</button>
+      
+      <!-- Simplified Result Output -->
+      <div class="output" id="valuationOutput"></div>
+      <!-- Hidden Detailed Output -->
+      <div id="detailedOutput"></div>
+      <!-- Advanced Pricing Panel (as previously implemented) -->
+      <div id="advancedPricingOutput" class="advanced-pricing"></div>
+      
+      <hr>
+      <p>
+        <strong>Adjustment Formula:</strong><br>
+        Q = (P × θ × e^(IV/100)) / [Δ × ATR × (P/S) × (OI+1) × ln(T_days+1)] × (regime factor)<br>
+        <em>For calls: Bear = 0.5, Consolidating = 0.7, Bull = 1.0; For puts: Bull = 0.5, Consolidating = 0.7, Bear = 1.0</em>
+      </p>
+    </div>
+    
+    <!-- Simulation Lab Module -->
+    <div id="simulation" class="tab module simulation-lab">
+      <!-- Dual-Panel Container -->
+      <div class="sim-container">
+        <!-- Left Input Panel -->
+        <div class="sim-input-panel">
+          <h2>Simulation Lab</h2>
+          <p>Experiment with different option parameters and strategies.</p>
+          <div class="basic-inputs">
+            <h3>Basic Black–Scholes Inputs</h3>
+            <label for="simOptionType">Option Type:</label>
+            <select id="simOptionType">
+              <option value="call">Call</option>
+              <option value="put">Put</option>
+            </select><br>
+            <label for="simS">Stock Price (S):</label>
+            <input type="number" id="simS" value="100" step="0.1"><br>
+            <label for="simK">Strike Price (K):</label>
+            <input type="number" id="simK" value="100" step="0.1"><br>
+            <label for="simSigma">Volatility (σ):</label>
+            <input type="number" id="simSigma" value="0.3" step="0.01"><br>
+            <label for="simR">Risk-free Rate (r):</label>
+            <input type="number" id="simR" value="0.05" step="0.005"><br>
+            <label for="simT">Time to Maturity (years):</label>
+            <input type="number" id="simT" value="1" step="0.1"><br>
+            <label for="simMu">Drift (μ):</label>
+            <input type="number" id="simMu" value="0.05" step="0.01"><br>
+            <label for="simDt">Time Step (dt):</label>
+            <input type="number" id="simDt" value="0.00397" step="0.0001"><br>
+            <label for="simSteps">Number of Steps:</label>
+            <input type="number" id="simSteps" value="252" step="1"><br>
+            <label for="simNumSim">Simulations/Trades:</label>
+            <input type="number" id="simNumSim" value="500" step="10"><br>
+          </div>
+          <div class="strategy-inputs">
+            <h3>
+              Strategy Inputs
+              <button id="toggleStrategy" onclick="toggleStrategyInputs()">&#9660;</button>
+            </h3>
+            <div id="strategySection" class="strategy-section">
+              <label for="tpPercentSim">Primary TP (% above Strike):</label>
+              <input type="number" id="tpPercentSim" value="10" step="1"><br>
+              <label for="slPercentSim">Stop-Loss (% below Strike):</label>
+              <input type="number" id="slPercentSim" value="20" step="1"><br>
+              <label for="secTPPercentSim">Secondary TP (% extra over TP):</label>
+              <input type="number" id="secTPPercentSim" value="15" step="1"><br>
+              <label for="extractionPercentSim">Extraction % on TP:</label>
+              <input type="number" id="extractionPercentSim" value="50" step="1"><br>
+              <label for="initialEquitySim">Initial Capital ($):</label>
+              <input type="number" id="initialEquitySim" value="1000" step="1"><br>
+            </div>
+          </div>
+        </div>
+        <!-- Right Output Panel -->
+        <div class="sim-output-panel">
+          <div class="chart-selector">
+            <label for="chartTypeSelect">Select Chart:</label>
+            <select id="chartTypeSelect" onchange="switchChart()">
+              <option value="pricePath">Price Path</option>
+              <option value="equityCurve">Equity Curve</option>
+              <option value="strategyEquity">Strategy Equity</option>
+              <option value="jumpDiffusion">Jump Diffusion Simulation</option>
+            </select>
+          </div>
+          <div id="chartContainer">
+            <!-- Existing canvases for the three charts -->
+            <canvas id="pricePathChart" width="600" height="300"></canvas>
+            <canvas id="equityCurveChart" width="600" height="300" style="display:none;"></canvas>
+            <canvas id="strategyEquityChart" width="600" height="300" style="display:none;"></canvas>
+            <!-- New canvas for Jump Diffusion Simulation -->
+            <canvas id="jumpDiffusionChart" width="600" height="300" style="display:none;"></canvas>
+          </div>
+          <!-- Single Generate Button -->
+          <div id="chartButtons">
+            <button id="generateBtn" onclick="regenerateChart()">Generate</button>
+          </div>
+          <div class="output" id="pricePathInfo"></div>
+          <div class="output" id="strategyMetrics"></div>
+        </div>
+      </div>
+      <!-- Optional 3D Background for Simulation Lab -->
+      <div id="sim3DBackground" class="sim-3d-bg"></div>
+    </div>
+    
+    <!-- Trading Calendar Module -->
+    <div id="calendar" class="tab module">
+      <h2>Trading Calendar</h2>
+      <p>
+        Track your trades and view essential details. You can update exit & profit information, delete selected records, and export full records for analysis.
+      </p>
+      <form id="tradeUpdateForm" onsubmit="updateTradeData(event)">
+        <label for="updateTradeIndex">Trade Index:</label>
+        <input type="number" id="updateTradeIndex" placeholder="Trade #"><br>
+        <label for="tradeExitUpdate">Exit Price:</label>
+        <input type="number" id="tradeExitUpdate" step="0.1"><br>
+        <label for="tradeProfitUpdate">Profit ($):</label>
+        <input type="number" id="tradeProfitUpdate" step="0.1"><br>
+        <label for="tradeCommentsUpdate">Comments:</label>
+        <input type="text" id="tradeCommentsUpdate" placeholder="Notes..."><br>
+        <button type="submit">Update Trade</button>
+      </form>
+      <hr>
+      <h3>Trade Log</h3>
+      <table id="tradeTable">
+        <thead>
+          <tr>
+            <th><input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)"></th>
+            <th>Date</th>
+            <th>Option Type</th>
+            <th>S</th>
+            <th>K</th>
+            <th>Entry</th>
+            <th>Exit</th>
+            <th>Profit</th>
+            <th>Comments</th>
+            <th>Expiration</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <br>
+      <button onclick="deleteSelectedTrades()">Delete Selected</button>
+      <button onclick="exportSelectedTradesAsCSV()">Export Selected Trades as CSV</button>
+    </div>
+  </div>
+  
+  <script>
+    // ==========================
+    // Global Variables & Setup
+    // ==========================
+    var trades = [];
+    var pricePathChart, equityCurveChart, strategyEquityChart, jumpDiffusionChart;
+    
+    // 3D Background variables for main page background
+    var bgScene, bgCamera, bgRenderer;
+    // Variables for the top inverted 3D background
+    var bgTopScene, bgTopCamera, bgTopRenderer;
+    
+    // Load trades from localStorage on window load and initialize both 3D scenes
+    window.onload = function() {
+      loadTradesFromStorage();
+      init3DBackground();
+      init3DBackgroundTop();
+      if(document.getElementById("simulation").classList.contains("active")) {
+        initSim3DBackground();
+      }
+    };
+    
+    // ------------------
+    // Theme Switcher
+    // ------------------
+    function setTheme(mode) {
+      let primary, secondary;
+      if (mode === 1) {
+        primary = "#FBA002";
+        secondary = "#313B2F";
+      } else if (mode === 2) {
+        primary = "#EFE9E0";
+        secondary = "#0F9E99";
+      }
+      document.documentElement.style.setProperty("--primary-color", primary);
+      document.documentElement.style.setProperty("--secondary-color", secondary);
+      document.documentElement.style.setProperty("--bg-color", primary);
+      document.documentElement.style.setProperty("--text-color", secondary);
+      document.body.style.background = primary;
+      document.body.style.color = secondary;
+    }
+    
+    // ------------------
+    // Hamburger Menu
+    // ------------------
+    function toggleNav() {
+      var sideNav = document.getElementById("sideNav");
+      sideNav.classList.toggle("open");
+    }
+    
+    // ------------------
+    // Navigation Tabs
+    // ------------------
+    function showTab(tabId) {
+      var tabs = document.getElementsByClassName("tab");
+      for (var i = 0; i < tabs.length; i++) {
+        tabs[i].classList.remove("active");
+      }
+      document.getElementById(tabId).classList.add("active");
+    }
+    
+    // ------------------
+    // Local Storage for Trades
+    // ------------------
+    function loadTradesFromStorage() {
+      const storedTrades = localStorage.getItem("trades");
+      if (storedTrades) {
+        trades = JSON.parse(storedTrades);
+        updateTradeTable();
+      }
+    }
+    
+    // ------------------
+    // Calculation Functions (Valuation, Black-Scholes, etc.)
+    // ------------------
+    function normCDF(x) {
+      var sign = x < 0 ? -1 : 1;
+      x = Math.abs(x) / Math.sqrt(2);
+      var t = 1 / (1 + 0.3275911 * x);
+      var a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741;
+      var a4 = -1.453152027, a5 = 1.061405429;
+      var erf = 1 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
+      return 0.5 * (1 + sign * erf);
+    }
+    
+    function blackScholesCall(S, K, sigma, r, T) {
+      var d1 = (Math.log(S / K) + (r + 0.5 * sigma * sigma) * T) / (sigma * Math.sqrt(T));
+      var d2 = d1 - sigma * Math.sqrt(T);
+      return S * normCDF(d1) - K * Math.exp(-r * T) * normCDF(d2);
+    }
+    
+    function blackScholesPut(S, K, sigma, r, T) {
+      var d1 = (Math.log(S / K) + (r + 0.5 * sigma * sigma) * T) / (sigma * Math.sqrt(T));
+      var d2 = d1 - sigma * Math.sqrt(T);
+      return K * Math.exp(-r * T) * normCDF(-d2) - S * normCDF(-d1);
+    }
+    
+    // ------------------
+    // Simplified Option Evaluator
+    // ------------------
+    function computeValuation() {
+      var optionType = document.getElementById("optionType").value;
+      var S = parseFloat(document.getElementById("paramS").value);
+      var K = parseFloat(document.getElementById("paramK").value);
+      var sigma = parseFloat(document.getElementById("paramSigma").value);
+      var r = parseFloat(document.getElementById("paramR").value);
+      var T_days = parseFloat(document.getElementById("paramT").value);
+      var T = T_days / 252;
+      
+      var regime = document.getElementById("marketRegime").value;
+      var theta = parseFloat(document.getElementById("paramTheta").value);
+      var delta = parseFloat(document.getElementById("paramDelta").value);
+      var ATR = parseFloat(document.getElementById("paramATR").value);
+      var OI = parseFloat(document.getElementById("paramOI").value);
+      var marketOptionPrice = parseFloat(document.getElementById("marketOptionPrice").value);
+      
+      var bsPrice = (optionType === "call") ? blackScholesCall(S, K, sigma, r, T) : blackScholesPut(S, K, sigma, r, T);
+      var IV = sigma * 100;
+      var numerator = bsPrice * theta * Math.exp(IV / 100);
+      var denominator = delta * ATR * (bsPrice / S) * (OI + 1) * Math.log(T_days + 1);
+      var adjustment = (denominator !== 0) ? numerator / denominator : 0;
+      
+      var regimeFactor = 1.0;
+      if (optionType === "call") {
+        regimeFactor = (regime === "Bear") ? 0.5 : (regime === "Consolidating") ? 0.7 : 1.0;
+      } else {
+        regimeFactor = (regime === "Bull") ? 0.5 : (regime === "Consolidating") ? 0.7 : 1.0;
+      }
+      adjustment *= regimeFactor;
+      
+      var compositeValuation = bsPrice + adjustment;
+      var tradingEdge = compositeValuation - marketOptionPrice;
+      
+      // Determine sentiment: if edge is near zero, consider neutral.
+      var sentiment = "";
+      if (Math.abs(tradingEdge) < 0.01) {
+        sentiment = "Neutral";
+      } else if (tradingEdge > 0) {
+        sentiment = "Undervalued";
+      } else {
+        sentiment = "Overvalued";
+      }
+      
+      // Grading as before
+      var edgeRatio = (marketOptionPrice !== 0) ? tradingEdge / marketOptionPrice : 0;
+      var baselineSigma = 0.2;
+      var volatilityScore = (sigma > baselineSigma) ? Math.max(0, 1 - ((sigma - baselineSigma) / baselineSigma)) : 1.0;
+      var liquidityScore = Math.log(OI + 1) / Math.log(1001);
+      var compositeGradeScore = regimeFactor * (0.6 * edgeRatio + 0.2 * volatilityScore + 0.2 * liquidityScore);
+      
+      var grade = "";
+      if (compositeGradeScore >= 0.5) {
+        grade = "AAA";
+      } else if (compositeGradeScore >= 0.3) {
+        grade = "AA";
+      } else {
+        grade = "A";
+      }
+      
+      // Build simplified output
+      var simpleOutput = "<strong>Trading Edge:</strong> $" + tradingEdge.toFixed(4) + "<br>" +
+                         "<strong>Sentiment:</strong> " + sentiment + "<br>" +
+                         "<strong>Grade:</strong> " + grade + "<br>" +
+                         "<button onclick='toggleDetailed()'>Show Details</button>";
+      document.getElementById("valuationOutput").innerHTML = '<div class="result-box">' + simpleOutput + '</div>';
+      
+      // Detailed output (hidden by default)
+      var detailedOutput = "<strong>Detailed Valuation:</strong><br>" +
+                           "Black–Scholes Price: $" + bsPrice.toFixed(4) + "<br>" +
+                           "Adjustment Factor (Q): $" + adjustment.toFixed(4) + "<br>" +
+                           "Composite Valuation: $" + compositeValuation.toFixed(4) + "<br>" +
+                           "Market Option Price: $" + marketOptionPrice.toFixed(4) + "<br>" +
+                           "Trading Edge: $" + tradingEdge.toFixed(4) + "<br>" +
+                           "Composite Grade Score: " + compositeGradeScore.toFixed(4);
+      document.getElementById("detailedOutput").innerHTML = detailedOutput;
+    }
+    
+    function toggleDetailed() {
+      var detailDiv = document.getElementById("detailedOutput");
+      if (detailDiv.style.display === "none" || detailDiv.style.display === "") {
+        detailDiv.style.display = "block";
+      } else {
+        detailDiv.style.display = "none";
+      }
+    }
+    
+    // ------------------
+    // Advanced Pricing Functions (New Models)
+    // ------------------
+    function computeBinomialPrice(S, K, sigma, r, T, steps) {
+      const dt = T / steps;
+      const u = Math.exp(sigma * Math.sqrt(dt));
+      const d = Math.exp(-sigma * Math.sqrt(dt));
+      const p = (Math.exp(r * dt) - d) / (u - d);
+      let optionValues = [];
+      for (let i = 0; i <= steps; i++) {
+        let ST = S * Math.pow(u, i) * Math.pow(d, steps - i);
+        optionValues[i] = Math.max(ST - K, 0);
+      }
+      for (let step = steps - 1; step >= 0; step--) {
+        for (let i = 0; i <= step; i++) {
+          optionValues[i] = Math.exp(-r * dt) * (p * optionValues[i + 1] + (1 - p) * optionValues[i]);
+        }
+      }
+      return optionValues[0];
+    }
+    
+    function simulateMonteCarloPrice(S, K, sigma, r, T, simulations) {
+      let sumPayoffs = 0;
+      const dt = T;
+      for (let i = 0; i < simulations; i++) {
+        const Z = gaussianRandom();
+        const ST = S * Math.exp((r - 0.5 * sigma * sigma) * dt + sigma * Math.sqrt(dt) * Z);
+        const payoff = Math.max(ST - K, 0);
+        sumPayoffs += payoff;
+      }
+      const avgPayoff = sumPayoffs / simulations;
+      return Math.exp(-r * T) * avgPayoff;
+    }
+    
+    function computeMertonPrice(S, K, sigma, r, T, lambda, k, delta, maxJumps) {
+      let price = 0;
+      for (let n = 0; n <= maxJumps; n++) {
+        let sigma_n = Math.sqrt(sigma * sigma + (n * delta * delta) / T);
+        let r_n = r - lambda * k + (n * Math.log(1 + k)) / T;
+        let poissonWeight = (Math.exp(-lambda * T) * Math.pow(lambda * T, n)) / factorial(n);
+        let bsPrice = blackScholesCall(S, K, sigma_n, r_n, T);
+        price += poissonWeight * bsPrice;
+      }
+      return price;
+    }
+    
+    function factorial(n) {
+      if (n === 0 || n === 1) return 1;
+      let result = 1;
+      for (let i = 2; i <= n; i++) {
+        result *= i;
+      }
+      return result;
+    }
+    
+    function toggleAdvancedPricing() {
+      var advPanel = document.getElementById("advancedPricingOutput");
+      if (advPanel.style.display === "none" || advPanel.style.display === "") {
+        showAdvancedPricing();
+        advPanel.style.display = "block";
+      } else {
+        advPanel.style.display = "none";
+      }
+    }
+    
+    function showAdvancedPricing() {
+      const S = parseFloat(document.getElementById("paramS").value);
+      const K = parseFloat(document.getElementById("paramK").value);
+      const sigma = parseFloat(document.getElementById("paramSigma").value);
+      const r = parseFloat(document.getElementById("paramR").value);
+      const T_days = parseFloat(document.getElementById("paramT").value);
+      const T = T_days / 252;
+      
+      const bsPrice = blackScholesCall(S, K, sigma, r, T);
+      const binPrice = computeBinomialPrice(S, K, sigma, r, T, 100);
+      const mcPrice = simulateMonteCarloPrice(S, K, sigma, r, T, 10000);
+      const mertonPrice = computeMertonPrice(S, K, sigma, r, T, 0.1, -0.05, 0.2, 50);
+      
+      var advHTML = "<h3>Advanced Pricing Models</h3>";
+      advHTML += "<table>";
+      advHTML += "<tr><th>Model</th><th>Price</th></tr>";
+      advHTML += "<tr><td>Black–Scholes</td><td>$" + bsPrice.toFixed(4) + "</td></tr>";
+      advHTML += "<tr><td>Binomial Model</td><td>$" + binPrice.toFixed(4) + "</td></tr>";
+      advHTML += "<tr><td>Monte Carlo</td><td>$" + mcPrice.toFixed(4) + "</td></tr>";
+      advHTML += "<tr><td>Merton Jump Diffusion</td><td>$" + mertonPrice.toFixed(4) + "</td></tr>";
+      advHTML += "</table>";
+      document.getElementById("advancedPricingOutput").innerHTML = advHTML;
+    }
+    
+    // ------------------
+    // Save and Update Trade Functions
+    // ------------------
+    function saveValuationToCalendar() {
+      const currentDate = new Date();
+      const tradeDate = currentDate.toISOString().split("T")[0];
+      const T_days = parseFloat(document.getElementById("paramT").value);
+      let expirationDate = new Date(currentDate);
+      expirationDate.setDate(expirationDate.getDate() + T_days);
+      const expiration = expirationDate.toISOString().split("T")[0];
+      
+      const optionType = document.getElementById("optionType").value;
+      const S = parseFloat(document.getElementById("paramS").value);
+      const K = parseFloat(document.getElementById("paramK").value);
+      const sigma = parseFloat(document.getElementById("paramSigma").value);
+      const r = parseFloat(document.getElementById("paramR").value);
+      const regime = document.getElementById("marketRegime").value;
+      const theta = parseFloat(document.getElementById("paramTheta").value);
+      const delta = parseFloat(document.getElementById("paramDelta").value);
+      const ATR = parseFloat(document.getElementById("paramATR").value);
+      const OI = parseFloat(document.getElementById("paramOI").value);
+      const marketOptionPrice = parseFloat(document.getElementById("marketOptionPrice").value);
+      
+      const T = T_days / 252;
+      var bsPrice = (optionType === "call") ? blackScholesCall(S, K, sigma, r, T) : blackScholesPut(S, K, sigma, r, T);
+      var IV = sigma * 100;
+      var numerator = bsPrice * theta * Math.exp(IV / 100);
+      var denominator = delta * ATR * (bsPrice / S) * (OI + 1) * Math.log(T_days + 1);
+      var adjustment = (denominator !== 0) ? numerator / denominator : 0;
+      
+      var regimeFactor = 1.0;
+      if (optionType === "call") {
+        regimeFactor = (regime === "Bear") ? 0.5 : (regime === "Consolidating") ? 0.7 : 1.0;
+      } else {
+        regimeFactor = (regime === "Bull") ? 0.5 : (regime === "Consolidating") ? 0.7 : 1.0;
+      }
+      adjustment *= regimeFactor;
+      
+      var compositeValuation = bsPrice + adjustment;
+      var tradingEdge = compositeValuation - marketOptionPrice;
+      var edgeRatio = (marketOptionPrice !== 0) ? tradingEdge / marketOptionPrice : 0;
+      var baselineSigma = 0.2;
+      var volatilityScore = (sigma > baselineSigma) ? Math.max(0, 1 - ((sigma - baselineSigma) / baselineSigma)) : 1.0;
+      var liquidityScore = Math.log(OI + 1) / Math.log(1001);
+      var compositeGradeScore = regimeFactor * (0.6 * edgeRatio + 0.2 * volatilityScore + 0.2 * liquidityScore);
+      
+      var grade = "";
+      if (compositeGradeScore >= 0.5) {
+        grade = "AAA";
+      } else if (compositeGradeScore >= 0.3) {
+        grade = "AA";
+      } else {
+        grade = "A";
+      }
+      
+      var trade = {
+        date: tradeDate,
+        optionType: optionType,
+        S: S,
+        K: K,
+        entry: marketOptionPrice,
+        exit: "",
+        profit: "",
+        comments: "",
+        expiration: expiration,
+        sigma: sigma,
+        r: r,
+        T_days: T_days,
+        regime: regime,
+        theta: theta,
+        delta: delta,
+        ATR: ATR,
+        OI: OI,
+        marketOptionPrice: marketOptionPrice,
+        bsPrice: bsPrice,
+        IV: IV,
+        adjustment: adjustment,
+        compositeValuation: compositeValuation,
+        tradingEdge: tradingEdge,
+        compositeGradeScore: compositeGradeScore,
+        grade: grade
+      };
+    
+      trades.push(trade);
+      localStorage.setItem("trades", JSON.stringify(trades));
+      updateTradeTable();
+      alert("Trade saved to the calendar!");
+    }
+    
+    function updateTradeTable() {
+      var tbody = document.getElementById("tradeTable").getElementsByTagName("tbody")[0];
+      tbody.innerHTML = "";
+      trades.forEach(function(trade, index) {
+        var row = document.createElement("tr");
+        row.innerHTML =
+          '<td><input type="checkbox" class="tradeCheckbox" data-index="' + index + '"></td>' +
+          "<td>" + trade.date + "</td>" +
+          "<td>" + trade.optionType + "</td>" +
+          "<td>" + trade.S + "</td>" +
+          "<td>" + trade.K + "</td>" +
+          "<td>" + trade.entry + "</td>" +
+          "<td>" + trade.exit + "</td>" +
+          "<td>" + trade.profit + "</td>" +
+          "<td>" + trade.comments + "</td>" +
+          "<td>" + trade.expiration + "</td>";
+        tbody.appendChild(row);
+      });
+    }
+    
+    function updateTradeData(event) {
+      event.preventDefault();
+      const index = parseInt(document.getElementById("updateTradeIndex").value);
+      if (index < 0 || index >= trades.length) {
+        alert("Invalid trade index");
+        return;
+      }
+      trades[index].exit = document.getElementById("tradeExitUpdate").value;
+      trades[index].profit = document.getElementById("tradeProfitUpdate").value;
+      trades[index].comments = document.getElementById("tradeCommentsUpdate").value;
+      localStorage.setItem("trades", JSON.stringify(trades));
+      updateTradeTable();
+      document.getElementById("tradeUpdateForm").reset();
+    }
+    
+    function toggleSelectAll(source) {
+      const checkboxes = document.querySelectorAll(".tradeCheckbox");
+      checkboxes.forEach(cb => cb.checked = source.checked);
+    }
+    
+    function deleteSelectedTrades() {
+      const checkboxes = document.querySelectorAll(".tradeCheckbox");
+      let newTrades = [];
+      checkboxes.forEach(cb => {
+        if (!cb.checked) {
+          const idx = parseInt(cb.getAttribute("data-index"));
+          newTrades.push(trades[idx]);
+        }
+      });
+      trades = newTrades;
+      localStorage.setItem("trades", JSON.stringify(trades));
+      updateTradeTable();
+    }
+    
+    function exportSelectedTradesAsCSV() {
+      const checkboxes = document.querySelectorAll(".tradeCheckbox");
+      let selectedTrades = [];
+      checkboxes.forEach(cb => {
+        if (cb.checked) {
+          const idx = parseInt(cb.getAttribute("data-index"));
+          selectedTrades.push(trades[idx]);
+        }
+      });
+      if (selectedTrades.length === 0) {
+        alert("No trades selected for export.");
+        return;
+      }
+      let csv = "Date,Option Type,S,K,Entry,Exit,Profit,Comments,Expiration\n";
+      selectedTrades.forEach(function(trade) {
+        csv += `${trade.date},${trade.optionType},${trade.S},${trade.K},${trade.entry},${trade.exit},${trade.profit},${trade.comments},${trade.expiration}\n`;
+      });
+      let blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      let link = document.createElement("a");
+      link.setAttribute("href", URL.createObjectURL(blob));
+      link.setAttribute("download", "selected_trades_export.csv");
+      link.click();
+    }
+    
+    // ------------------
+    // Simulation Lab Functions
+    // ------------------
+    function gaussianRandom() {
+      var u = 0, v = 0;
+      while (u === 0) u = Math.random();
+      while (v === 0) v = Math.random();
+      return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+    }
+    
+    function simulateGBM(S0, mu, sigma, dt, steps) {
+      var path = [S0];
+      for (var i = 1; i <= steps; i++) {
+        var prev = path[i - 1];
+        var rand = gaussianRandom();
+        var change = (mu - 0.5 * sigma * sigma) * dt + sigma * Math.sqrt(dt) * rand;
+        path.push(prev * Math.exp(change));
+      }
+      return path;
+    }
+    
+    function simulatePricePath() {
+      var S = parseFloat(document.getElementById("simS").value);
+      var mu = parseFloat(document.getElementById("simMu").value);
+      var sigma = parseFloat(document.getElementById("simSigma").value);
+      var dt = parseFloat(document.getElementById("simDt").value);
+      var steps = parseInt(document.getElementById("simSteps").value);
+      var path = simulateGBM(S, mu, sigma, dt, steps);
+      var K = parseFloat(document.getElementById("simK").value);
+      var tpPercent = parseFloat(document.getElementById("tpPercentSim").value);
+      var slPercent = parseFloat(document.getElementById("slPercentSim").value);
+      var secTPPercent = parseFloat(document.getElementById("secTPPercentSim").value);
+      
+      var primaryTP = K * (1 + tpPercent / 100);
+      var secondaryTP = primaryTP * (1 + secTPPercent / 100);
+      var stopLoss = K * (1 - slPercent / 100);
+      
+      var constantPrimaryTP = Array(path.length).fill(primaryTP);
+      var constantSecondaryTP = Array(path.length).fill(secondaryTP);
+      var constantStopLoss = Array(path.length).fill(stopLoss);
+      
+      var ctx = document.getElementById("pricePathChart").getContext("2d");
+      if (pricePathChart) { pricePathChart.destroy(); }
+      pricePathChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: path.map((p, i) => i),
+          datasets: [
+            {
+              label: 'Simulated Price Path',
+              data: path,
+              borderColor: 'var(--primary-color)',
+              backgroundColor: 'transparent',
+              fill: false,
+              tension: 0.2,
+              borderWidth: 1,
+              pointRadius: 1,
+              pointBackgroundColor: "#ffffff"
+            },
+            {
+              label: 'Stop Loss',
+              data: constantStopLoss,
+              borderColor: "red",
+              borderWidth: 1,
+              fill: false,
+              pointRadius: 0,
+              borderDash: [5,5]
+            },
+            {
+              label: 'Primary TP',
+              data: constantPrimaryTP,
+              borderColor: "#90EE90",
+              borderWidth: 1,
+              fill: false,
+              pointRadius: 0,
+              borderDash: [5,5]
+            },
+            {
+              label: 'Secondary TP',
+              data: constantSecondaryTP,
+              borderColor: "green",
+              borderWidth: 1,
+              fill: false,
+              pointRadius: 0,
+              borderDash: [5,5]
+            }
+          ]
+        },
+        options: {
+          animation: { duration: 1500, easing: 'easeInOutQuart' },
+          scales: {
+            x: { title: { display: true, text: "Time Step" }, ticks: { color: 'var(--secondary-color)' } },
+            y: { title: { display: true, text: "Price" }, ticks: { color: 'var(--secondary-color)' } }
+          },
+          plugins: {
+            legend: { labels: { color: 'var(--secondary-color)' } },
+            title: { display: true, text: "Simulated Price Path", color: 'var(--secondary-color)' }
+          },
+          responsive: true,
+          maintainAspectRatio: false
+        }
+      });
+      document.getElementById("pricePathInfo").innerHTML = "Terminal Price: $" + path[path.length - 1].toFixed(2);
+    }
+    
+    function simulateEquityCurve() {
+      var numTrades = parseInt(document.getElementById("simNumSim").value);
+      var S = parseFloat(document.getElementById("simS").value);
+      var mu = parseFloat(document.getElementById("simMu").value);
+      var sigma = parseFloat(document.getElementById("simSigma").value);
+      var dt = parseFloat(document.getElementById("simDt").value);
+      var steps = parseInt(document.getElementById("simSteps").value);
+      var optionType = document.getElementById("simOptionType").value;
+      var r = parseFloat(document.getElementById("simR").value);
+      var T = parseFloat(document.getElementById("simT").value);
+      var K = parseFloat(document.getElementById("simK").value);
+      
+      var bsPrice, cumSum = [], sum = 0;
+      for (var i = 0; i < numTrades; i++) {
+        var path = simulateGBM(S, mu, sigma, dt, steps);
+        var payoff;
+        if (optionType === "call") {
+          bsPrice = blackScholesCall(S, K, sigma, r, T);
+          payoff = Math.max(path[path.length - 1] - K, 0) * 100;
+        } else {
+          bsPrice = blackScholesPut(S, K, sigma, r, T);
+          payoff = Math.max(K - path[path.length - 1], 0) * 100;
+        }
+        var pl = payoff - (bsPrice * 100);
+        sum += pl;
+        cumSum.push(sum);
+      }
+      var ctx = document.getElementById("equityCurveChart").getContext("2d");
+      if (equityCurveChart) { equityCurveChart.destroy(); }
+      equityCurveChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: cumSum.map((v, i) => i + 1),
+          datasets: [{
+            label: 'Equity Curve',
+            data: cumSum,
+            borderColor: 'green',
+            backgroundColor: 'transparent',
+            fill: false,
+            tension: 0.1,
+            borderWidth: 1,
+            pointRadius: 1,
+            pointBackgroundColor: "#ffffff"
+          }]
+        },
+        options: {
+          scales: {
+            x: { title: { display: true, text: "Trade Number" }, ticks: { color: 'var(--secondary-color)' } },
+            y: { title: { display: true, text: "Cumulative P&L" }, ticks: { color: 'var(--secondary-color)' } }
+          },
+          plugins: {
+            legend: { labels: { color: 'var(--secondary-color)' } },
+            title: { display: true, text: "Equity Curve Simulation", color: 'var(--secondary-color)' }
+          },
+          responsive: true,
+          maintainAspectRatio: false
+        }
+      });
+    }
+    
+    function simulateStrategyEquity() {
+      var numTrades = parseInt(document.getElementById("simNumSim").value);
+      var K = parseFloat(document.getElementById("simK").value);
+      var tpPercent = parseFloat(document.getElementById("tpPercentSim").value) / 100;
+      var slPercent = parseFloat(document.getElementById("slPercentSim").value) / 100;
+      var secTPPercent = parseFloat(document.getElementById("secTPPercentSim").value) / 100;
+      var extractionPercent = parseFloat(document.getElementById("extractionPercentSim").value) / 100;
+      var initialEquity = parseFloat(document.getElementById("initialEquitySim").value);
+      
+      var S = parseFloat(document.getElementById("simS").value);
+      var mu = parseFloat(document.getElementById("simMu").value);
+      var sigma = parseFloat(document.getElementById("simSigma").value);
+      var dt = parseFloat(document.getElementById("simDt").value);
+      var steps = parseInt(document.getElementById("simSteps").value);
+      
+      var equity = initialEquity;
+      var equityCurve = [];
+      var winCount = 0;
+      
+      for (var i = 0; i < numTrades; i++) {
+        var price = K;
+        var tradePL = null;
+        var reachedTP = false;
+        for (var j = 0; j < steps; j++) {
+          var rand = gaussianRandom();
+          var change = (mu - 0.5 * sigma * sigma) * dt + sigma * Math.sqrt(dt) * rand;
+          price = price * Math.exp(change);
+          if (price <= K * (1 - slPercent)) {
+            tradePL = price - K;
+            break;
+          }
+          if (!reachedTP && price >= K * (1 + tpPercent)) {
+            reachedTP = true;
+          }
+          if (reachedTP) {
+            if (price >= K * (1 + tpPercent) * (1 + secTPPercent)) {
+              tradePL = (K * (1 + tpPercent) * (1 + secTPPercent) - K) * extractionPercent;
+              break;
+            }
+            if (price < K * (1 + tpPercent)) {
+              tradePL = (K * (1 + tpPercent) - K) * extractionPercent;
+              break;
+            }
+          }
+        }
+        if (tradePL === null) {
+          tradePL = reachedTP ? (K * (1 + tpPercent) - K) * extractionPercent : price - K;
+        }
+        if (tradePL > 0) winCount++;
+        equity += tradePL;
+        equityCurve.push(equity);
+      }
+      
+      var winRate = (winCount / numTrades) * 100;
+      var ctx = document.getElementById("strategyEquityChart").getContext("2d");
+      if (strategyEquityChart) { strategyEquityChart.destroy(); }
+      strategyEquityChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: equityCurve.map((v, i) => i + 1),
+          datasets: [{
+            label: 'Strategy Equity',
+            data: equityCurve,
+            borderColor: 'cyan',
+            backgroundColor: 'transparent',
+            fill: false,
+            tension: 0.1,
+            borderWidth: 1,
+            pointRadius: 1,
+            pointBackgroundColor: "#ffffff"
+          }]
+        },
+        options: {
+          scales: {
+            x: { title: { display: true, text: "Trade Number" }, ticks: { color: 'var(--secondary-color)' } },
+            y: { title: { display: true, text: "Cumulative Equity" }, ticks: { color: 'var(--secondary-color)' } }
+          },
+          plugins: {
+            legend: { labels: { color: 'var(--secondary-color)' } },
+            title: { display: true, text: "Strategy Equity Simulation", color: 'var(--secondary-color)' }
+          },
+          responsive: true,
+          maintainAspectRatio: false
+        }
+      });
+      document.getElementById("strategyMetrics").innerHTML = "<p>Win Rate: " + winRate.toFixed(2) + "%</p><p>Final Equity: $" + equity.toFixed(2) + "</p>";
+    }
+    
+    // New Simulation: Jump Diffusion Price Path
+    function simulateJumpDiffusionPath(S, r, sigma, T, steps, lambda, k, simulations) {
+      const dt = T / steps;
+      let paths = [];
+      for (let i = 0; i < simulations; i++) {
+        let path = [S];
+        for (let j = 1; j <= steps; j++) {
+          const Z = gaussianRandom();
+          const jump = (Math.random() < lambda * dt) ? Math.exp(k) : 1;
+          const newPrice = path[j - 1] * Math.exp((r - 0.5 * sigma * sigma) * dt + sigma * Math.sqrt(dt) * Z) * jump;
+          path.push(newPrice);
+        }
+        paths.push(path);
+      }
+      return paths;
+    }
+    
+    function renderJumpDiffusionChart() {
+      const S = parseFloat(document.getElementById("simS").value);
+      const r = parseFloat(document.getElementById("simR").value);
+      const sigma = parseFloat(document.getElementById("simSigma").value);
+      const T = parseFloat(document.getElementById("simT").value);
+      const steps = parseInt(document.getElementById("simSteps").value);
+      const lambda = 0.1, k = -0.05;
+      const simulations = 1;
+      
+      const paths = simulateJumpDiffusionPath(S, r, sigma, T, steps, lambda, k, simulations);
+      const path = paths[0];
+      
+      var ctx = document.getElementById("jumpDiffusionChart").getContext("2d");
+      if (jumpDiffusionChart) { jumpDiffusionChart.destroy(); }
+      jumpDiffusionChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: path.map((p, i) => i),
+          datasets: [{
+            label: 'Jump Diffusion Price Path',
+            data: path,
+            borderColor: 'orange',
+            backgroundColor: 'transparent',
+            fill: false,
+            tension: 0.2,
+            borderWidth: 1,
+            pointRadius: 1,
+            pointBackgroundColor: "#ffffff"
+          }]
+        },
+        options: {
+          animation: { duration: 1500, easing: 'easeInOutQuart' },
+          scales: {
+            x: { title: { display: true, text: "Time Step" }, ticks: { color: 'var(--secondary-color)' } },
+            y: { title: { display: true, text: "Price" }, ticks: { color: 'var(--secondary-color)' } }
+          },
+          plugins: {
+            legend: { labels: { color: 'var(--secondary-color)' } },
+            title: { display: true, text: "Jump Diffusion Simulation", color: 'var(--secondary-color)' }
+          },
+          responsive: true,
+          maintainAspectRatio: false
+        }
+      });
+      document.getElementById("pricePathInfo").innerHTML = "Jump Diffusion Terminal Price: $" + path[path.length - 1].toFixed(2);
+    }
+    
+    // Chart Control Function
+    function regenerateChart() {
+      const chartType = document.getElementById("chartTypeSelect").value;
+      const strategySection = document.getElementById("strategySection");
+      if(chartType === "equityCurve") {
+        strategySection.style.display = "none";
+      } else {
+        strategySection.style.display = "block";
+      }
+      
+      document.getElementById("pricePathChart").style.display = "none";
+      document.getElementById("equityCurveChart").style.display = "none";
+      document.getElementById("strategyEquityChart").style.display = "none";
+      document.getElementById("jumpDiffusionChart").style.display = "none";
+      
+      if(chartType === "pricePath"){
+        document.getElementById("pricePathChart").style.display = "block";
+        simulatePricePath();
+      } else if(chartType === "equityCurve"){
+        document.getElementById("equityCurveChart").style.display = "block";
+        simulateEquityCurve();
+      } else if(chartType === "strategyEquity"){
+        document.getElementById("strategyEquityChart").style.display = "block";
+        simulateStrategyEquity();
+      } else if(chartType === "jumpDiffusion"){
+        document.getElementById("jumpDiffusionChart").style.display = "block";
+        renderJumpDiffusionChart();
+      }
+    }
+    
+    function switchChart() {
+      regenerateChart();
+    }
+    
+    // ------------------
+    // 3D Animated Background (Main Full-Page)
+    // ------------------
+    function init3DBackground() {
+      const container = document.getElementById("threeBackground");
+      bgScene = new THREE.Scene();
+      bgCamera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+      bgCamera.position.set(0, 150, 400);
+      
+      bgRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+      bgRenderer.setSize(window.innerWidth, window.innerHeight);
+      container.appendChild(bgRenderer.domElement);
+      
+      var geometry = new THREE.PlaneGeometry(600, 600, 50, 50);
+      geometry.rotateX(-Math.PI / 2);
+      var plane = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color: 0x313B2F, wireframe: true }));
+      plane.rotation.y = Math.PI / 4;
+      bgScene.add(plane);
+      
+      geometry.attributes.position.original = geometry.attributes.position.array.slice();
+      
+      var clock = new THREE.Clock();
+      function animate() {
+        requestAnimationFrame(animate);
+        var time = clock.getElapsedTime();
+        var positions = geometry.attributes.position.array;
+        var originalPositions = geometry.attributes.position.original;
+        for (let i = 0; i < positions.length; i += 3) {
+          let ox = originalPositions[i];
+          let oz = originalPositions[i+2];
+          positions[i+1] = Math.sin(time + ox * 0.1) * 5 + Math.cos(time + oz * 0.1) * 5;
+        }
+        geometry.attributes.position.needsUpdate = true;
+        bgRenderer.render(bgScene, bgCamera);
+      }
+      animate();
+      
+      window.addEventListener('resize', function() {
+        bgCamera.aspect = window.innerWidth / window.innerHeight;
+        bgCamera.updateProjectionMatrix();
+        bgRenderer.setSize(window.innerWidth, window.innerHeight);
+      });
+    }
+    
+    // ------------------
+    // Inverted 3D Animated Background (Top of Page)
+    // ------------------
+    function init3DBackgroundTop() {
+      const container = document.getElementById("threeBackgroundTop");
+      bgTopScene = new THREE.Scene();
+      bgTopCamera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 1000);
+      bgTopCamera.position.set(0, 150, 400);
+      
+      bgTopRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+      bgTopRenderer.setSize(container.clientWidth, container.clientHeight);
+      container.appendChild(bgTopRenderer.domElement);
+      
+      var geometry = new THREE.PlaneGeometry(600, 600, 50, 50);
+      // Instead of rotating -90° on X, we rotate +90° to flip upside down
+      geometry.rotateX(Math.PI / 2);
+      var plane = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color: 0x313B2F, wireframe: true }));
+      plane.rotation.y = Math.PI / 4;
+      // Flip vertically by setting scale.y to -1
+      plane.scale.y = -1;
+      bgTopScene.add(plane);
+      
+      geometry.attributes.position.original = geometry.attributes.position.array.slice();
+      
+      var clock = new THREE.Clock();
+      function animate() {
+        requestAnimationFrame(animate);
+        var time = clock.getElapsedTime();
+        var positions = geometry.attributes.position.array;
+        var originalPositions = geometry.attributes.position.original;
+        for (let i = 0; i < positions.length; i += 3) {
+          let ox = originalPositions[i];
+          let oz = originalPositions[i+2];
+          positions[i+1] = Math.sin(time + ox * 0.1) * 5 + Math.cos(time + oz * 0.1) * 5;
+        }
+        geometry.attributes.position.needsUpdate = true;
+        bgTopRenderer.render(bgTopScene, bgTopCamera);
+      }
+      animate();
+      
+      window.addEventListener('resize', function() {
+        bgTopCamera.aspect = container.clientWidth / container.clientHeight;
+        bgTopCamera.updateProjectionMatrix();
+        bgTopRenderer.setSize(container.clientWidth, container.clientHeight);
+      });
+    }
+    
+    // ------------------
+    // Simulation Lab 3D Background (Optional)
+    // ------------------
+    function initSim3DBackground() {
+      const container = document.getElementById("sim3DBackground");
+      const simScene = new THREE.Scene();
+      const simCamera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 1, 1000);
+      simCamera.position.z = 150;
+      const simRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+      simRenderer.setSize(container.clientWidth, container.clientHeight);
+      container.appendChild(simRenderer.domElement);
+    
+      const primary = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim();
+      const material = new THREE.MeshBasicMaterial({ color: primary, wireframe: true, transparent: true, opacity: 0.2 });
+      const geometry = new THREE.BoxGeometry(100, 100, 100);
+      const cube = new THREE.Mesh(geometry, material);
+      simScene.add(cube);
+    
+      function animateSim() {
+        requestAnimationFrame(animateSim);
+        cube.rotation.x += 0.001;
+        cube.rotation.y += 0.001;
+        simRenderer.render(simScene, simCamera);
+      }
+      animateSim();
+    
+      window.addEventListener('resize', function() {
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+        simCamera.aspect = width / height;
+        simCamera.updateProjectionMatrix();
+        simRenderer.setSize(width, height);
+      });
+    }
+    
+    // ------------------
+    // Simulation Lab Enhancements
+    // ------------------
+    function toggleStrategyInputs() {
+      const strategySection = document.getElementById("strategySection");
+      if (strategySection.style.display === "none" || strategySection.style.display === "") {
+        strategySection.style.display = "block";
+      } else {
+        strategySection.style.display = "none";
+      }
+    }
+    
+    // ------------------
+    // Additional Enhancements: Custom Cursor for Interactive Elements
+    // ------------------
+    document.querySelectorAll('a, button').forEach(elem => {
+      elem.addEventListener('mouseover', function() { document.body.style.cursor = 'pointer'; });
+      elem.addEventListener('mouseout', function() { document.body.style.cursor = 'default'; });
+    });
+  </script>
+</body>
+</html>
